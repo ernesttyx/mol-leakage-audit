@@ -1,0 +1,36 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Data — don't commit large or proprietary datasets. Keep only tiny examples.
+data/validation/*.csv
+data/validation/*.gz
+!data/validation/.gitkeep
+!data/examples/*.csv
+
+# Third-party datasets downloaded for auditing — NOT ours to redistribute.
+data/external/
+
+# Internal working notes — not for public release (name specific repos/people).
+FINDINGS.md
+outreach/
+scripts/audit_admet2025.py
+scripts/audit_toxtree.py
+
+# Secrets
+.env
+*.key
+
+# Outputs
+*.log
+output/

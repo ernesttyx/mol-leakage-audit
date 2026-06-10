@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>audit — is your dataset split lying to you?</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="bg-orbs" aria-hidden="true">
+    <span class="orb orb-1"></span>
+    <span class="orb orb-2"></span>
+    <span class="orb orb-3"></span>
+  </div>
+
+  <main>
+    <!-- ───────────────────────── Hero ───────────────────────── -->
+    <header class="hero">
+      <div class="badge">
+        <span class="badge-dot"></span>
+        leakage smoke detector · for molecular ML
+      </div>
+      <h1>Is your train/test split <span class="grad">telling the truth?</span></h1>
+      <p class="tag">
+        A great-looking accuracy score can be a lie if your test molecules
+        are secretly hiding in your training set. Drop in your CSV and
+        <strong>audit</strong> sniffs out the leak — duplicates, near-twins,
+        shared scaffolds, and a memorization baseline — in seconds.
+      </p>
+    </header>
+
+    <!-- ─────────────────────── Uploader ─────────────────────── -->
+    <section class="uploader" aria-label="Upload your dataset">
+      <label id="dropZone" for="fileInput" class="dropzone">
+        <input type="file" id="fileInput" accept=".csv" class="visually-hidden" />
+        <div class="drop-icon" aria-hidden="true">⬆</div>
+        <div class="drop-text">
+          <span class="drop-main" id="fileName">Drop your CSV here, or click to browse</span>
+          <span class="drop-sub">expects columns <code>smiles</code>, <code>label</code>, <code>split</code> — but we'll adapt if they're named differently</span>
+        </div>
+      </label>
+
+      <div class="actions">
+        <button id="runBtn" class="btn-primary">
+          <span class="btn-emoji" aria-hidden="true">🔍</span> Run audit
+        </button>
+        <button id="fixBtn" class="btn-secondary">
+          <span class="btn-emoji" aria-hidden="true">🛠</span> Fix my split
+        </button>
+      </div>
+    </section>
+
+    <!-- ─────────────────────── Results ──────────────────────── -->
+    <section id="results" hidden>
+      <div id="verdict" class="verdict"></div>     <!-- big ✅ / ⚠️ / ❌ chip -->
+      <div id="notes" class="notes" hidden></div>  <!-- what the adapter did to your file -->
+      <div id="summary" class="summary"></div>
+
+      <h2 class="section-label">The four tests</h2>
+      <div id="checks" class="checks"></div>       <!-- the 4 check cards -->
+
+      <div id="chart" class="chart"></div>         <!-- similarity distribution -->
+    </section>
+
+    <!-- ───────────── "and here's the cure" ──────────── -->
+    <section id="fixResult" hidden>
+      <h2 class="fix-title">🩺 The cure — a scaffold re-split</h2>
+      <div id="fixScores" class="fix-scores"></div>
+      <p id="fixMsg" class="summary"></p>
+      <a id="downloadLink" class="download" download="fixed_split.csv">⬇ Download corrected split (CSV)</a>
+    </section>
+
+    <!-- ───────────────────── Disclaimer ─────────────────────── -->
+    <footer class="disclaimer">
+      <strong>A smoke detector, not a certificate.</strong>
+      This can prove leakage is present — never that it's absent.
+      Built on the shoulders of RDKit · DataSAIL · Polaris · Pat Walters' work.
+    </footer>
+  </main>
+
+  <script src="app.js"></script>
+  <!-- Tiny progressive-enhancement layer: shows the chosen filename and enables
+       drag-and-drop. Kept out of app.js so the backend contract stays untouched. -->
+  <script>
+    (function () {
+      const input = document.getElementById("fileInput");
+      const zone = document.getElementById("dropZone");
+      const nameEl = document.getElementById("fileName");
+      const RESET = "Drop your CSV here, or click to browse";
+
+      function showName() {
+        if (input.files && input.files.length) {
+          nameEl.textContent = "📄 " + input.files[0].name;
+          zone.classList.add("has-file");
+        } else {
+          nameEl.textContent = RESET;
+          zone.classList.remove("has-file");
+        }
+      }
+      input.addEventListener("change", showName);
+
+      ["dragenter", "dragover"].forEach((e) =>
+        zone.addEventListener(e, (ev) => {
+          ev.preventDefault();
+          zone.classList.add("dragging");
+        })
+      );
+      ["dragleave", "drop"].forEach((e) =>
+        zone.addEventListener(e, (ev) => {
+          ev.preventDefault();
+          zone.classList.remove("dragging");
+        })
+      );
+      zone.addEventListener("drop", (ev) => {
+        if (ev.dataTransfer.files.length) {
+          input.files = ev.dataTransfer.files;
+          showName();
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

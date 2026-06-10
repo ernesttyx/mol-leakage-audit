@@ -1,0 +1,11 @@
+smiles,label,split
+CCO,1,train
+CCOC,1,train
+CCOCC,1,train
+c1ccccc1,0,train
+c1ccccc1C,0,train
+c1ccccc1CC,0,train
+CCO,1,test
+c1ccccc1,0,test
+CCOC,1,test
+c1ccccc1C,0,test

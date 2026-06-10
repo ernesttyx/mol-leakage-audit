@@ -1,0 +1,19 @@
+# Core cheminformatics + data
+rdkit>=2023.9          # molecules, fingerprints, scaffolds, Tanimoto.
+                       # If `pip install rdkit` fails on your system, try:
+                       #   conda install -c conda-forge rdkit
+                       # (the conda build is the most reliable on Windows)
+pandas>=2.0            # read CSV datasets
+numpy>=1.24            # arrays / math under the hood
+
+# Machine-learning plumbing (NOT deep learning — just metrics + helpers)
+scikit-learn>=1.3      # AUROC / accuracy metrics for the dumb baseline
+
+# Web backend (Day 3+)
+fastapi>=0.110         # the tiny API that the webpage talks to
+uvicorn>=0.27          # the server that runs FastAPI
+python-multipart>=0.0.9  # lets FastAPI accept uploaded files
+
+# Optional — the "fix my split" feature (Day 5). Heavier install; skip until needed.
+# datasail            # leakage-minimized re-splitting. If it fights you, use the
+#                     # built-in scaffold split fallback in backend/checks/scaffold.py
