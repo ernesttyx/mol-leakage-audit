@@ -1,3 +1,18 @@
+> # ⚠️ STATUS: VISION / ROADMAP — **NOT IMPLEMENTED**
+> This document is a *design specification for a future, much larger tool* (protein
+> sequences, ESM-2 embeddings, homology/Foldseek, pretraining-contamination, 13 checks,
+> a DataSAIL-falsification protocol). **None of it is implemented in this repository.**
+>
+> **What v1 (this repo) actually ships** is a small-molecule (SMILES) leakage *smoke
+> detector* with **4 checks** — exact duplicates, nearest-neighbour Tanimoto similarity,
+> Bemis–Murcko scaffold overlap, and a dumb-baseline constructive proof. See the
+> [README](../README.md) for what the code really does, and
+> [`RECONCILE_v1_to_spec.md`](RECONCILE_v1_to_spec.md) for how the two relate.
+>
+> Read on only if you want the long-term vision.
+
+---
+
 # Bio-Data Leakage Audit Tool — Complete Pipeline Specification
 
 > A reproducible, evidence-grounded auditor for detecting data leakage in biological ML datasets.

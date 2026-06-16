@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>mol-leakage-audit — is your train/test split lying to you?</title>
+  <meta name="description" content="A local-first leakage smoke detector for molecular ML datasets. Checks duplicates, near-twins, shared scaffolds, and a memorization baseline that constructively proves whether your split is gameable." />
+  <!-- Open Graph so the LinkedIn link unfurls nicely -->
+  <meta property="og:title" content="mol-leakage-audit — is your train/test split lying to you?" />
+  <meta property="og:description" content="A local-first leakage smoke detector for molecular ML datasets. Deterministic, no LLM in the loop — every verdict points at real computed numbers." />
+  <meta property="og:type" content="website" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --green:#16a34a; --amber:#d97706; --red:#dc2626; --red-soft:#fee2e2;
+      --brand:#0d9488; --brand-deep:#0f766e; --brand-soft:#ccfbf1;
+      --ink:#14201f; --muted:#5b6b6a; --faint:#8a9897; --line:#e4ebea;
+      --card:#ffffff; --bg:#f4f7f6; --radius:16px; --radius-sm:10px;
+      --shadow:0 1px 2px rgba(15,40,38,.04),0 12px 32px -12px rgba(15,40,38,.14);
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;font-family:Inter,system-ui,sans-serif;color:var(--ink);background:var(--bg);line-height:1.55;-webkit-font-smoothing:antialiased}
+    .orbs{position:fixed;inset:0;overflow:hidden;z-index:-1}
+    .orb{position:absolute;border-radius:50%;filter:blur(60px);opacity:.5}
+    .orb-1{width:420px;height:420px;background:var(--brand-soft);top:-120px;left:-100px}
+    .orb-2{width:360px;height:360px;background:#e0e7ff;bottom:-140px;right:-80px}
+    .orb-3{width:300px;height:300px;background:#dcfce7;top:40%;right:8%;opacity:.25}
+    main{max-width:880px;margin:0 auto;padding:48px 22px 80px}
+    .badge{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--brand-deep);background:var(--card);border:1px solid var(--line);padding:6px 12px;border-radius:999px;box-shadow:var(--shadow)}
+    .dot{width:8px;height:8px;border-radius:50%;background:var(--brand)}
+    h1{font-size:clamp(30px,5vw,46px);line-height:1.1;letter-spacing:-.02em;margin:22px 0 14px;font-weight:800}
+    .grad{background:linear-gradient(100deg,var(--brand) 10%,#0ea5a0 50%,#4f46e5 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+    .tag{font-size:18px;color:var(--muted);max-width:640px}
+    .tag strong{color:var(--ink)}
+    .cta{display:flex;flex-wrap:wrap;gap:12px;margin:26px 0 8px}
+    .btn{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:15px;padding:12px 20px;border-radius:var(--radius-sm);text-decoration:none;border:1px solid transparent;transition:transform .08s ease}
+    .btn:active{transform:translateY(1px)}
+    .btn-primary{background:linear-gradient(100deg,var(--brand),#4f46e5);color:#fff}
+    .btn-ghost{background:var(--card);color:var(--ink);border-color:var(--line)}
+    .note{font-size:13px;color:var(--faint);margin-top:6px}
+    section{margin-top:56px}
+    h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:700;margin:0 0 18px}
+    /* mock verdict card */
+    .mock{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px;overflow:hidden}
+    .verdict{display:flex;align-items:center;gap:12px;font-weight:800;font-size:22px;color:var(--red)}
+    .vchip{font-size:13px;font-weight:700;color:#fff;background:var(--red);padding:4px 12px;border-radius:999px}
+    .vsub{font-size:14px;color:var(--muted);margin:10px 0 20px}
+    .checks{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+    .check{border:1px solid var(--line);border-radius:var(--radius-sm);padding:14px}
+    .check .k{font-size:12px;color:var(--faint);font-weight:600}
+    .check .v{font-size:22px;font-weight:800;margin-top:2px}
+    .check .d{font-size:12px;color:var(--muted);margin-top:4px}
+    .hot{color:var(--red)} .ok{color:var(--green)} .warn{color:var(--amber)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
+    .feat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
+    .feat h3{margin:0 0 6px;font-size:16px}
+    .feat p{margin:0;font-size:14px;color:var(--muted)}
+    pre{background:#0f1c1b;color:#d7e7e5;border-radius:var(--radius);padding:18px 20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13.5px;line-height:1.7}
+    pre .c{color:#6f8a87}
+    ol{padding-left:20px} ol li{margin:8px 0;color:var(--muted)} ol li b{color:var(--ink)}
+    .honest{background:#fffaf0;border:1px solid #f3e2c0;border-radius:var(--radius);padding:20px 22px}
+    .honest h3{margin:0 0 8px;color:#92500e;font-size:16px}
+    .honest p{margin:0 0 8px;font-size:14px;color:#7a5a2a}
+    .honest p:last-child{margin:0}
+    footer{margin-top:64px;padding-top:22px;border-top:1px solid var(--line);font-size:13px;color:var(--faint)}
+    a{color:var(--brand-deep)}
+  </style>
+</head>
+<body>
+  <div class="orbs" aria-hidden="true"><span class="orb orb-1"></span><span class="orb orb-2"></span><span class="orb orb-3"></span></div>
+  <main>
+    <header>
+      <span class="badge"><span class="dot"></span> leakage smoke detector · for molecular ML · runs locally</span>
+      <h1>Is your train/test split <span class="grad">telling the truth?</span></h1>
+      <p class="tag">
+        A great-looking accuracy score is a lie if your test molecules are secretly
+        hiding in your training set. <strong>mol-leakage-audit</strong> sniffs out the
+        leak — duplicates, near-twins, shared scaffolds, and a memorization baseline that
+        <strong>constructively proves</strong> whether the split is gameable. Deterministic,
+        no LLM in the loop, and your data never leaves your machine.
+      </p>
+      <div class="cta">
+        <a class="btn btn-primary" href="https://github.com/ernesttyx/mol-leakage-audit">★ View on GitHub</a>
+        <a class="btn btn-ghost" href="#run">Run it locally →</a>
+      </div>
+      <p class="note">Open source (MIT) · Python · small molecules / SMILES (v1)</p>
+    </header>
+
+    <!-- Mock verdict so the page shows the output without a live backend -->
+    <section aria-label="Example output">
+      <h2>What you get back</h2>
+      <div class="mock">
+        <div class="verdict"><span class="vchip">❌ LEAKING</span> example: a random split of BBBP</div>
+        <p class="vsub">A no-learning nearest-neighbour lookup already scores 0.90 AUROC on this
+          test set — so any "real" model's high score is mostly memorization, not learning.</p>
+        <div class="checks">
+          <div class="check"><div class="k">EXACT DUPLICATES</div><div class="v hot">12.4%</div><div class="d">of test molecules are also in train</div></div>
+          <div class="check"><div class="k">NEAREST-NEIGHBOUR SIM</div><div class="v warn">53%</div><div class="d">have a &gt;0.8 Tanimoto twin in train</div></div>
+          <div class="check"><div class="k">SHARED SCAFFOLDS</div><div class="v warn">45%</div><div class="d">of test scaffolds appear in train</div></div>
+          <div class="check"><div class="k">DUMB BASELINE ★</div><div class="v hot">0.90</div><div class="d">AUROC by copy-the-neighbour (chance = 0.50)</div></div>
+        </div>
+      </div>
+      <p class="note">Illustrative numbers. Verdicts: <b class="ok">CLEAN</b> · <b class="warn">SUSPECT</b> · <b class="hot">LEAKING</b>. "LEAKING" fires only on constructive proof (duplicates or a high memorization baseline) — resemblance alone never triggers it.</p>
+    </section>
+
+    <section>
+      <h2>The four checks</h2>
+      <div class="grid">
+        <div class="feat"><h3>1 · Exact duplicates</h3><p>The same molecule (canonical SMILES) sitting in both train and test — the simplest, most damning leak.</p></div>
+        <div class="feat"><h3>2 · Near-twin similarity</h3><p>For each test molecule, its most-similar training neighbour by Tanimoto on ECFP fingerprints. A wall near 1.0 means your "held-out" set is a reworded copy.</p></div>
+        <div class="feat"><h3>3 · Scaffold overlap</h3><p>Bemis–Murcko core skeletons shared across the split — the model can win by memorizing the scaffold family.</p></div>
+        <div class="feat"><h3>4 · Dumb baseline ★</h3><p>Copy each test label from its nearest training neighbour. If a no-learning lookup scores high, the split is gameable — that's a demonstration, not a guess.</p></div>
+      </div>
+    </section>
+
+    <section id="run">
+      <h2>Run it locally (your data never leaves)</h2>
+      <pre><span class="c"># clone + install</span>
+git clone https://github.com/ernesttyx/mol-leakage-audit
+cd mol-leakage-audit
+pip install -r requirements.txt
+
+<span class="c"># launch the web app, then open http://localhost:8000</span>
+uvicorn backend.app:app --reload</pre>
+      <p class="note">Drop in any CSV with a SMILES column (a label and a split column are auto-detected or created). Run <code>pytest</code> to re-prove the auditor against known-answer datasets.</p>
+    </section>
+
+    <section>
+      <h2>Why local-first</h2>
+      <ol>
+        <li><b>Your data never leaves your machine.</b> Labs won't upload proprietary molecules to a SaaS — so this runs like a linter, offline.</li>
+        <li><b>No hallucination by construction.</b> There is no language model in the tool. Every verdict is a deterministic computation over real numbers; same input → identical output.</li>
+        <li><b>Honest by design.</b> It can prove leakage is <i>present</i> — it never claims a dataset is <i>certified</i> clean.</li>
+      </ol>
+    </section>
+
+    <section>
+      <div class="honest">
+        <h3>A smoke detector, not a certificate</h3>
+        <p>It detects the leakage <i>types it implements</i>, on small molecules. A high memorization baseline flags a test set that's gameable by memorization — interpreting <i>why</i> (broken split vs. genuinely easy chemistry) still needs a human, relative to how novel your real-world molecules will be.</p>
+        <p>"CLEAN" means "these checks found nothing," not "proven safe." That's the normal, honest state of every leakage tool — and exactly why a reproducible, openly-caveated one is worth having.</p>
+      </div>
+    </section>
+
+    <footer>
+      Built on the shoulders of RDKit · DataSAIL · Polaris · Pat Walters' work.
+      MIT licensed · <a href="https://github.com/ernesttyx/mol-leakage-audit">github.com/ernesttyx/mol-leakage-audit</a>
+    </footer>
+  </main>
+</body>
+</html>

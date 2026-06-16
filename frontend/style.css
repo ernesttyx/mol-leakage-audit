@@ -218,6 +218,40 @@ button:disabled { opacity: .55; cursor: default; transform: none; box-shadow: no
 .bar:hover .bar-fill { background: linear-gradient(180deg, #f59e0b, var(--red)); }
 .bar-label { text-align: center; font-size: .68rem; color: var(--faint); margin-top: .35rem; }
 
+/* ── collapse chart (before/after baseline bars) ────────────── */
+.collapse-chart {
+  margin: 0 0 1.1rem; background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1.25rem 1.3rem; box-shadow: var(--shadow-soft);
+}
+.cc-plot {
+  position: relative; display: flex; gap: 14%; justify-content: center;
+  align-items: flex-end; height: 200px; padding: 0 8%;
+  border-bottom: 1px solid var(--line);
+}
+.cc-col { flex: 0 0 22%; display: flex; flex-direction: column; height: 100%; }
+.cc-track { flex: 1; display: flex; align-items: flex-end; }
+.cc-bar {
+  width: 100%; min-height: 2px; border-radius: 6px 6px 0 0; position: relative;
+  background: linear-gradient(180deg, var(--brand) 0%, var(--brand-deep) 100%);
+  transition: height .6s cubic-bezier(.2,.8,.2,1);
+}
+.cc-bar.before.hot { background: linear-gradient(180deg, #f59e0b, var(--red)); }
+.cc-bar.after { background: linear-gradient(180deg, #34d399, var(--green)); }
+.cc-bar.after.hot { background: linear-gradient(180deg, #f59e0b, var(--red)); }
+.cc-val {
+  position: absolute; top: -1.5rem; left: 0; right: 0; text-align: center;
+  font-size: .9rem; font-weight: 800; color: var(--ink, #111);
+}
+.cc-xlabel { text-align: center; font-size: .78rem; color: var(--muted); margin-top: .4rem; }
+.cc-line { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--faint); }
+.cc-line span {
+  position: absolute; right: 2px; top: -1.45rem; font-size: .66rem; padding: 1px 6px;
+  border-radius: 6px; background: var(--card); color: var(--muted); white-space: nowrap;
+}
+.cc-line.cc-leaking { border-top-color: var(--red); }
+.cc-line.cc-leaking span { color: var(--red); }
+.cc-line.cc-chance { border-top-color: var(--faint); }
+
 /* ── fix / cure ─────────────────────────────────────────────── */
 #fixResult { margin-top: 2.5rem; animation: rise .45s ease both; }
 .fix-title { font-size: 1.25rem; font-weight: 800; margin-bottom: 1rem; letter-spacing: -.01em; }

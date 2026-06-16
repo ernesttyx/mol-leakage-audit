@@ -268,3 +268,73 @@ def test_adapter_regression_label_runs_end_to_end():
     assert notes["label_type"] == "continuous"
     report = audit(clean)
     assert report["checks"]["baseline"]["metric_name"] == "R2"
+
+
+# ---------------------------------------------------------------------------
+# Regression tests for the metric/threshold-consistency fixes.
+# These pin the bugs found in the 2026-06-15 deep audit so they can't come back.
+# ---------------------------------------------------------------------------
+
+def test_adapt_and_baseline_label_type_always_agree():
+    # The ONLY two metrics are AUROC (binary) and R2 (continuous), and adapt's call
+    # must match baseline's. Previously a 3-10 unique-value label was 'continuous' in
+    # adapt but scored with 'accuracy' in baseline, then judged with AUROC bands.
+    cases = [
+        ([0, 1] * 20, "binary", "AUROC"),         # clean binary
+        ([0, 1, 2, 3, 4] * 8, "continuous", "R2"),  # 5-class -> NOT binary -> R2
+        ([2, 5] * 20, "continuous", "R2"),         # two values but not {0,1} -> R2
+    ]
+    for labels, exp_type, exp_metric in cases:
+        smis = (_many_molecules() * 3)[: len(labels)]
+        raw = pd.DataFrame({"smiles": smis, "y": labels})
+        clean, notes = prepare(raw, make_split_method="random")
+        report = audit(clean)
+        assert notes["label_type"] == exp_type, (labels, notes["label_type"])
+        assert report["checks"]["baseline"]["metric_name"] == exp_metric
+
+
+def test_baseline_never_reports_accuracy():
+    # The removed 'accuracy' path used the wrong (AUROC) threshold bands. Guard that it
+    # is gone for every label shape we can construct.
+    for labels in ([0, 1] * 30, [0, 1, 2] * 20, list(range(60)), [3.3, 4.4] * 30):
+        smis = (_many_molecules() * 3)[: len(labels)]
+        raw = pd.DataFrame({"smiles": smis, "y": labels})
+        clean, _ = prepare(raw, make_split_method="random")
+        metric = audit(clean)["checks"]["baseline"]["metric_name"]
+        assert metric in ("AUROC", "R2"), metric
+
+
+def test_single_class_test_split_is_inconclusive_not_leaking():
+    # If the test split holds a single class, AUROC is undefined. Must NOT crash and
+    # must NOT manufacture a LEAKING verdict from a NaN score.
+    import math
+    smis = _diverse_molecules()
+    rows = [(s, 1, "train") for s in smis] + [(s, 0, "train") for s in smis[:3]]
+    # test = only label-1 molecules, none duplicated into train's structures
+    test_smis = ["C" * n for n in range(2, 8)]
+    rows += [(s, 1, "test") for s in test_smis if Chem.MolFromSmiles(s)]
+    df = _df(rows)
+    report = audit(df)
+    assert math.isnan(report["checks"]["baseline"]["score"])
+    assert report["verdict"] != "LEAKING"
+
+
+def test_small_split_flagged_low_confidence():
+    # A tiny dataset still gets a verdict, but must be flagged low-confidence and never
+    # presented as definitive.
+    df = _df([
+        ("CCO", 1, "train"), ("CCN", 0, "train"), ("CCC", 1, "train"),
+        ("c1ccccc1", 0, "test"), ("CC(=O)O", 1, "test"),
+    ])
+    report = audit(df)
+    assert report["low_confidence"] is True
+    assert "LOW CONFIDENCE" in report["summary"]
+
+
+def test_large_split_not_low_confidence():
+    # >=50 in BOTH splits -> reliable. 300 rows, 1/3 to test = 100 test / 200 train.
+    smis = (_many_molecules() * 5)[:300]
+    rows = [(s, i % 2, "test" if i % 3 == 0 else "train") for i, s in enumerate(smis)]
+    report = audit(_df(rows))
+    assert report["n_train"] >= 50 and report["n_test"] >= 50
+    assert report["low_confidence"] is False

@@ -28,6 +28,12 @@ THRESHOLDS = {
     "r2_clean": 0.40,           # R2: little recoverable by memorization -> healthy
 }
 
+# Below this many records in either split, the fraction-based thresholds above are
+# statistically shaky (one duplicate in a 10-row test set is already 10%). We still
+# report the verdict, but flag it as low-confidence so a tiny demo CSV can't be read
+# as a hard claim. (Matches the spec's "warn if a split < 50 records".)
+MIN_RELIABLE_SPLIT = 50
+
 
 def _baseline_bands(metric_name: str) -> tuple[float, float]:
     """(leaking_above, clean_below) for the baseline score, per metric."""
@@ -101,8 +107,20 @@ def audit(df: pd.DataFrame) -> dict:
     else:
         verdict = "SUSPECT"
 
+    # --- reliability guard -----------------------------------------------------
+    # Small splits make the fraction thresholds noisy; say so instead of pretending
+    # the verdict is as solid as it is on thousands of rows.
+    n_train, n_test = int(len(train)), int(len(test))
+    low_confidence = n_train < MIN_RELIABLE_SPLIT or n_test < MIN_RELIABLE_SPLIT
+    reliability_note = (
+        f"LOW CONFIDENCE: only {n_train} train / {n_test} test rows "
+        f"(< {MIN_RELIABLE_SPLIT}); treat this verdict as indicative, not definitive. "
+        if low_confidence else ""
+    )
+
     # --- honest summary --------------------------------------------------------
     summary = (
+        f"{reliability_note}"
         f"Verdict: {verdict}. "
         f"{checks['duplicates']['message']} "
         f"{checks['similarity']['message']} "
@@ -115,4 +133,11 @@ def audit(df: pd.DataFrame) -> dict:
         "inputs will be more novel than this test set."
     )
 
-    return {"verdict": verdict, "checks": checks, "summary": summary}
+    return {
+        "verdict": verdict,
+        "checks": checks,
+        "summary": summary,
+        "low_confidence": bool(low_confidence),
+        "n_train": n_train,
+        "n_test": n_test,
+    }

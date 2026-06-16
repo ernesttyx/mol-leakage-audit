@@ -1,0 +1,13 @@
+# Vercel deploys ONLY the static landing/ page (see vercel.json).
+# The Python app, datasets, tests and docs are not part of the hosted site —
+# the tool is meant to run locally. Exclude everything except landing/.
+backend/
+data/
+docs/
+scripts/
+tests/
+outreach/
+*.md
+requirements.txt
+__pycache__/
+.pytest_cache/

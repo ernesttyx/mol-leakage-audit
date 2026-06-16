@@ -77,13 +77,17 @@ def sniff_label_column(df: pd.DataFrame, smiles_col: str, split_col: str | None)
 
 
 def detect_label_type(series: pd.Series) -> str:
-    """'binary' if values are essentially {0,1}; else 'continuous'."""
+    """'binary' if values are EXACTLY {0,1}; else 'continuous'.
+
+    Strict on purpose: the only two metrics downstream are AUROC (binary) and R2
+    (continuous), and `baseline.py` must agree with this call exactly or the report
+    would apply the wrong threshold bands. A two-valued label that is NOT {0,1}
+    (e.g. {2,5}, or a 5-class score) is treated as continuous so the metric/threshold
+    pair always matches. See backend/checks/baseline.py:label_metric.
+    """
     vals = pd.to_numeric(series, errors="coerce").dropna()
     uniq = set(vals.unique())
-    if uniq.issubset({0, 1}) and len(uniq) <= 2:
-        return "binary"
-    # small number of integer classes -> still treat as binary-ish only if exactly 2
-    if len(uniq) == 2:
+    if uniq.issubset({0, 1}) and len(uniq) == 2:
         return "binary"
     return "continuous"
 

@@ -1,6 +1,6 @@
 # Spec v2 — protein leakage checks, **local only**
 
-> Trimmed version of `bio_leakage_audit_pipeline.md`. Same core ideas (manifest,
+> Trimmed version of `VISION_bio_pipeline.md`. Same core ideas (manifest,
 > evidence store, no-hallucination guarantee, danger quadrant) — but **everything
 > that requires a cloud, a GPU farm, a 40 GB database, or a SaaS upload is removed.**
 > Goal: a single `pip install` + CLI that runs on Ernest's laptop, like the v1 linter.

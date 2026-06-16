@@ -94,6 +94,8 @@ function renderFix(result) {
       <div class="fix-label">scaffold split (${metric})</div>
     </div>`;
 
+  drawCollapseChart(before, after, metric);
+
   document.getElementById("fixMsg").textContent = result.improved
     ? `The dumb baseline dropped from ${before.toFixed(2)} to ${after.toFixed(2)} ` +
       `(new split: ${result.n_train} train / ${result.n_test} test). That drop is the proof ` +
@@ -105,6 +107,46 @@ function renderFix(result) {
   // Wire up the download link with the corrected CSV as an in-browser blob.
   const blob = new Blob([result.csv], { type: "text/csv" });
   document.getElementById("downloadLink").href = URL.createObjectURL(blob);
+}
+
+// --- the collapse bar chart -------------------------------------------------
+// Two bars — the dumb baseline on YOUR split vs on a clean scaffold split — drawn
+// against two reference lines: CHANCE (what a no-signal split should score) and the
+// LEAKING threshold. The whole leakage argument in one picture: a tall "your split"
+// bar above the leaking line that COLLAPSES toward chance once the split is fixed.
+function drawCollapseChart(before, after, metric) {
+  const isR2 = metric === "R2";
+  // Axis + reference lines per metric. AUROC: chance 0.5, leaking 0.85. R2: chance 0, leaking 0.70.
+  const axisMin = isR2 ? 0 : 0.5;     // floor of the plot (clamp negatives/below-chance here)
+  const axisMax = 1;                  // both metrics top out at 1.0
+  const chance = isR2 ? 0 : 0.5;
+  const leaking = isR2 ? 0.7 : 0.85;
+
+  const span = axisMax - axisMin;
+  const toPct = (v) => Math.max(0, Math.min(100, ((v - axisMin) / span) * 100));
+
+  const bar = (score, label, cls) => {
+    const h = toPct(score);
+    const hot = score >= leaking; // above the leaking line = red
+    return `
+      <div class="cc-col">
+        <div class="cc-track">
+          <div class="cc-bar ${cls} ${hot ? "hot" : ""}" style="height:${h}%">
+            <span class="cc-val">${score.toFixed(2)}</span>
+          </div>
+        </div>
+        <div class="cc-xlabel">${label}</div>
+      </div>`;
+  };
+
+  document.getElementById("collapseChart").innerHTML = `
+    <div class="chart-title">Memorization baseline (${metric}) — your split vs a clean scaffold split</div>
+    <div class="cc-plot">
+      <div class="cc-line cc-leaking" style="bottom:${toPct(leaking)}%"><span>leaking ≥ ${leaking}</span></div>
+      <div class="cc-line cc-chance"  style="bottom:${toPct(chance)}%"><span>chance ${chance.toFixed(2)}</span></div>
+      ${bar(before, "your split", "before")}
+      ${bar(after, "scaffold split", "after")}
+    </div>`;
 }
 
 const VERDICT_STYLE = {
